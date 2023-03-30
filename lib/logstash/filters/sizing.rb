@@ -39,7 +39,7 @@ class LogStash::Filters::Event < LogStash::Filters::Base
     require "socket"
     require "atomic"
     require "thread_safe"
-    require "objspace"
+    require "knjrbfw"
 
     @last_flush = Atomic.new(0) # how many seconds ago the metrics where flushed.
     @last_clear = Atomic.new(0) # how many seconds ago the metrics where cleared.
@@ -50,7 +50,10 @@ class LogStash::Filters::Event < LogStash::Filters::Base
   public
   def filter(event)
     key = create_key event
-    @sizing_groups[key].mark ObjectSpace.memsize_of(event)
+    puts event.class
+    # analyzer = Knj::Memory_analyzer::Object_size_counter.new(event)
+    # puts analyzer
+    # @sizing_groups[key].mark analyzer.calculate_size
   end
 
   def flush(options = {})

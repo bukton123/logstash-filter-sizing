@@ -6,10 +6,11 @@ services:
     volumes:
       - ./:/usr/src/app
     working_dir: /usr/src/app
+    # command: jruby -S bundler install 
     command: gem build logstash-filter-sizing.gemspec
 
   example:
-    image: ls:1
+    image: s:1
     volumes:
       - ./example/logstash.yml:/usr/share/logstash/config/logstash.yml
       - ./example/config:/usr/share/logstash/conf/

@@ -21,7 +21,7 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency "logstash-core-plugin-api", "~> 2.0"
   s.add_runtime_dependency "metriks"                          #(MIT license)
   s.add_runtime_dependency "thread_safe"
-  s.add_runtime_dependency "objspace"
+  s.add_runtime_dependency "knjrbfw"
 
   s.add_development_dependency 'logstash-devutils'
   s.add_development_dependency 'insist'
