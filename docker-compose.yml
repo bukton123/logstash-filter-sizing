@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  build:
+    image: jruby
+    volumes:
+      - ./:/usr/src/app
+    working_dir: /usr/src/app
+    command: gem build logstash-filter-sizing.gemspec
+
+  example:
+    image: ls:1
+    volumes:
+      - ./example/logstash.yml:/usr/share/logstash/config/logstash.yml
+      - ./example/config:/usr/share/logstash/conf/
