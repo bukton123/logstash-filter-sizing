@@ -10,19 +10,17 @@ require "logstash/namespace"
 #
 # filter {
 #   sizing {
-#     group => [ "message" ]
+#     group => {
+#       "key" => "name of event"
+#     }
 #   }
 # }
 #
 class LogStash::Filters::Event < LogStash::Filters::Base
   config_name "sizing"
 
-  # syntax: `group => [ "name of event", "name of event" ]`
-  config :group, :validate => :array, :default => []
-
-  # syntax: `ignore => [ "name of event" ]`
-  # The ignore, when ignore output field
-  config :group_ignore, :validate => :array, :default => []
+  # syntax: `group => { "key" => "name of event" }`
+  config :group, :validate => :hash, :default => []
 
   # The flush interval, when the metrics event is created. Must be a multiple of 1s.
   config :flush_interval, :validate => :number, :default => 30
@@ -39,7 +37,6 @@ class LogStash::Filters::Event < LogStash::Filters::Base
     require "socket"
     require "atomic"
     require "thread_safe"
-    require "knjrbfw"
 
     @last_flush = Atomic.new(0) # how many seconds ago the metrics where flushed.
     @last_clear = Atomic.new(0) # how many seconds ago the metrics where cleared.
@@ -50,10 +47,7 @@ class LogStash::Filters::Event < LogStash::Filters::Base
   public
   def filter(event)
     key = create_key event
-    puts event.class
-    # analyzer = Knj::Memory_analyzer::Object_size_counter.new(event)
-    # puts analyzer
-    # @sizing_groups[key].mark analyzer.calculate_size
+    @sizing_groups[key].mark Marshal.dump(event).bytesize
   end
 
   def flush(options = {})
@@ -73,7 +67,7 @@ class LogStash::Filters::Event < LogStash::Filters::Base
       metric.clear if should_clear?
     end
 
-    event.set("events", results)
+    event.set("sizes", results)
 
 
     # Reset counter since metrics were flushed
@@ -97,8 +91,8 @@ class LogStash::Filters::Event < LogStash::Filters::Base
 
   def create_key(event)
     key_events = []
-    @group.each do |g|
-      key_events << "#{g}:#{event.get(event.sprintf(g))}"
+    @group.each do |k,v|
+      key_events << "#{k}:#{event.get(event.sprintf(v))}"
     end
 
     key_events.join(",")
@@ -106,7 +100,7 @@ class LogStash::Filters::Event < LogStash::Filters::Base
 
   def flush_rates(name, metric, results)
     hashMap = {
-      event: metric.count
+      size: metric.count
     }
 
     name.split(",", -1).each do |kv|
