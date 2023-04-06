@@ -16,7 +16,7 @@ require "logstash/namespace"
 #   }
 # }
 #
-class LogStash::Filters::Event < LogStash::Filters::Base
+class LogStash::Filters::Sizing < LogStash::Filters::Base
   config_name "sizing"
 
   # syntax: `group => { "key" => "name of event" }`
@@ -69,13 +69,13 @@ class LogStash::Filters::Event < LogStash::Filters::Base
 
     event = LogStash::Event.new
     event.set("message", @host)
-    results = {}
+    # results = {}
     @sizing_groups.each_pair do |name, metric|
-      flush_rates name, metric, results
+      flush_rates event, name, metric
       metric.clear if should_clear?
     end
 
-    event.set("results", results)
+    # event.set("results", results)
 
 
     # Reset counter since metrics were flushed
@@ -106,7 +106,7 @@ class LogStash::Filters::Event < LogStash::Filters::Base
     key_events.join(",")
   end
 
-  def flush_rates(name, metric, results)
+  def flush_rates(event, name, metric)
     hashMap = {
       size: metric.count
     }
@@ -116,7 +116,7 @@ class LogStash::Filters::Event < LogStash::Filters::Base
       hashMap[output[0]] = output[1] || ""
     end
 
-    results[name] = hashMap
+    event.set("[sizing][#{name}]", hashMap)
   end
 
   def should_flush?
@@ -127,4 +127,4 @@ class LogStash::Filters::Event < LogStash::Filters::Base
     @clear_interval > 0 && @last_clear.value >= @clear_interval
   end
 
-end # class LogStash::Filters::Event
+end # class LogStash::Filters::Sizing
