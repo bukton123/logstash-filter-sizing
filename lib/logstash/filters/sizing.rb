@@ -25,6 +25,9 @@ class LogStash::Filters::Event < LogStash::Filters::Base
   # The flush interval, when the metrics event is created. Must be a multiple of 1s.
   config :flush_interval, :validate => :number, :default => 30
 
+  # The event size field
+  config :field_event, :validate => :string, :default => "all"
+
   # The clear interval, when all counter are reset.
   #
   # If set to -1, the default value, the metrics will never be cleared.
@@ -47,7 +50,12 @@ class LogStash::Filters::Event < LogStash::Filters::Base
   public
   def filter(event)
     key = create_key event
-    @sizing_groups[key].mark Marshal.dump(event).bytesize
+
+    if @field_event == "all"
+      @sizing_groups[key].mark Marshal.dump(event).bytesize
+    else
+      @sizing_groups[key].mark Marshal.dump(event.get(event.sprintf(@field_event))).bytesize
+    end
   end
 
   def flush(options = {})
@@ -61,13 +69,13 @@ class LogStash::Filters::Event < LogStash::Filters::Base
 
     event = LogStash::Event.new
     event.set("message", @host)
-    results = []
+    results = {}
     @sizing_groups.each_pair do |name, metric|
       flush_rates name, metric, results
       metric.clear if should_clear?
     end
 
-    event.set("sizes", results)
+    event.set("results", results)
 
 
     # Reset counter since metrics were flushed
@@ -108,7 +116,7 @@ class LogStash::Filters::Event < LogStash::Filters::Base
       hashMap[output[0]] = output[1] || ""
     end
 
-    results << hashMap
+    results[name] = hashMap
   end
 
   def should_flush?
