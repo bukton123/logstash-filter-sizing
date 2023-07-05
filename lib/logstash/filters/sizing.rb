@@ -54,7 +54,7 @@ class LogStash::Filters::Sizing < LogStash::Filters::Base
     if @field_event == "all"
       @sizing_groups[key].mark Marshal.dump(event).bytesize
     else
-      @sizing_groups[key].mark Marshal.dump(event.get(event.sprintf(@field_event))).bytesize
+      @sizing_groups[key].mark Marshal.dump(event.get(event.sprintf(@field_event))).bytesize - 10
     end
   end
 
