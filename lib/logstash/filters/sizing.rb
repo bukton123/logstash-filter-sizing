@@ -28,6 +28,12 @@ class LogStash::Filters::Sizing < LogStash::Filters::Base
   # The event size field
   config :field_event, :validate => :string, :default => "all"
 
+  # Custom check sizing event
+  config :field_custom, :validate => :boolean, :default => false
+
+  # Matching message
+  config :field_matching, :validate => :array, :default => []
+
   # The clear interval, when all counter are reset.
   #
   # If set to -1, the default value, the metrics will never be cleared.
@@ -35,6 +41,7 @@ class LogStash::Filters::Sizing < LogStash::Filters::Base
   config :clear_interval, :validate => :number, :default => 30
 
   public
+
   def register
     require "metriks"
     require "socket"
@@ -44,17 +51,30 @@ class LogStash::Filters::Sizing < LogStash::Filters::Base
     @last_flush = Atomic.new(0) # how many seconds ago the metrics where flushed.
     @last_clear = Atomic.new(0) # how many seconds ago the metrics where cleared.
     @host = Socket.gethostname.force_encoding(Encoding::UTF_8)
-    @sizing_groups = ThreadSafe::Cache.new { |h,k| h[k] = Metriks.meter k }
+    @sizing_groups = ThreadSafe::Cache.new { |h, k| h[k] = Metriks.meter k }
   end
 
   public
+
   def filter(event)
     key = create_key event
 
-    if @field_event == "all"
-      @sizing_groups[key].mark Marshal.dump(event).bytesize
-    else
+    if @field_custom && @field_event != "all"
       @sizing_groups[key].mark Marshal.dump(event.get(event.sprintf(@field_event))).bytesize - 10
+    else
+      msg = ""
+      @field_matching.each do |field|
+        msg = event.get(event.sprintf(field))
+        if msg
+          break
+        end
+      end
+
+      if msg
+        @sizing_groups[key].mark Marshal.dump(msg).bytesize - 10
+      else
+        @sizing_groups[key].mark Marshal.dump(event.to_hash).bytesize - 100
+      end
     end
   end
 
@@ -77,12 +97,11 @@ class LogStash::Filters::Sizing < LogStash::Filters::Base
 
     # event.set("results", results)
 
-
     # Reset counter since metrics were flushed
     @last_flush.value = 0
 
     if should_clear?
-      #Reset counter since metrics were cleared
+      # Reset counter since metrics were cleared
       @last_clear.value = 0
       @sizing_groups.clear
     end
@@ -99,7 +118,7 @@ class LogStash::Filters::Sizing < LogStash::Filters::Base
 
   def create_key(event)
     key_events = []
-    @group.each do |k,v|
+    @group.each do |k, v|
       key_events << "#{k}:#{event.get(event.sprintf(v))}"
     end
 
@@ -127,4 +146,6 @@ class LogStash::Filters::Sizing < LogStash::Filters::Base
     @clear_interval > 0 && @last_clear.value >= @clear_interval
   end
 
-end # class LogStash::Filters::Sizing
+end
+
+# class LogStash::Filters::Sizing

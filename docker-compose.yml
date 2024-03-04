@@ -10,7 +10,8 @@ services:
     command: gem build logstash-filter-sizing.gemspec
 
   example:
-    image: s:1
+    build: .
+    container_name: sizing
     volumes:
       - ./example/logstash.yml:/usr/share/logstash/config/logstash.yml
       - ./example/config:/usr/share/logstash/conf/
